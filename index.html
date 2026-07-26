@@ -424,11 +424,13 @@ function recordFailedAttempt(type){
   let attempts = parseInt(localStorage.getItem(attemptsKey) || '0');
   attempts++;
   localStorage.setItem(attemptsKey, attempts.toString());
+  console.log(`[SEGURIDAD] ${type} intentos fallidos: ${attempts}/${LOGIN_SECURITY.MAX_ATTEMPTS}`);
   
   if(attempts >= LOGIN_SECURITY.MAX_ATTEMPTS){
     localStorage.setItem(blockedKey, Date.now().toString());
     blockMsg.classList.add('active');
     loginBtn.disabled = true;
+    console.log(`[BLOQUEO] ${type} bloqueado hasta ${new Date(parseInt(localStorage.getItem(blockedKey)) + LOGIN_SECURITY.BLOCK_DURATION).toLocaleTimeString()}`);
     startCountdown(type);
   }
 }
