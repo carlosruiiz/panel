@@ -168,6 +168,9 @@
   .btn-primary{background:var(--gold);color:#241b0d;border:none;padding:10px 20px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;}
   .err{color:var(--red); font-size:12px; margin-top:8px; display:none;}
   .loading-msg{text-align:center; color:var(--text-dim); padding:40px; font-size:13px;}
+  .login-block-msg{background:rgba(211,105,91,0.1); border:1px solid var(--red); color:var(--red); font-size:12px; padding:12px; border-radius:8px; margin-bottom:16px; display:none; text-align:center;}
+  .login-block-msg.active{display:block;}
+  .login-countdown{font-weight:700; font-size:13px;}
 
   @media (max-width:640px){
     .card{grid-template-columns:1fr; }
@@ -199,7 +202,8 @@
       <label>Contraseña del negocio</label>
       <input type="password" id="gateBizPassword" placeholder="Contraseña que os dio Comercio">
       <div class="err" id="bizErr">Contraseña incorrecta.</div>
-      <button class="btn-primary" style="width:100%" onclick="enterAsBusiness()">Entrar como este negocio</button>
+      <div class="login-block-msg" id="bizBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="bizCountdown">5:00</span></div>
+      <button class="btn-primary" style="width:100%" onclick="enterAsBusiness()" id="bizLoginBtn">Entrar como este negocio</button>
     </div>
 
     <div class="gate-divider">o</div>
@@ -209,7 +213,8 @@
       <label>Código de staff</label>
       <input type="password" id="gateStaffCode" placeholder="Introduce el código">
       <div class="err" id="staffErr">Código incorrecto.</div>
-      <button class="btn-primary" style="width:100%" onclick="enterAsStaff()">Entrar como Staff</button>
+      <div class="login-block-msg" id="staffBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="staffCountdown">5:00</span></div>
+      <button class="btn-primary" style="width:100%" onclick="enterAsStaff()" id="staffLoginBtn">Entrar como Staff</button>
     </div>
   </div>
 </div>
@@ -325,10 +330,19 @@ const CONFIG = {
 };
 
 const STORAGE_KEY = 'comercio-tablon-v3';
+const LOGIN_SECURITY = {
+  MAX_ATTEMPTS: 5,
+  BLOCK_DURATION: 5 * 60 * 1000, // 5 minutos en ms
+  BIZ_ATTEMPTS_KEY: 'login-attempts-biz',
+  BIZ_BLOCKED_KEY: 'login-blocked-biz',
+  STAFF_ATTEMPTS_KEY: 'login-attempts-staff',
+  STAFF_BLOCKED_KEY: 'login-blocked-staff'
+};
 let db = { negocios: [], eventos: [] };
 let identity = null;
 let editingId = null;
 let revealedPasswords = {};
+let countdownIntervals = {};
 
 const monthNames = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
@@ -374,7 +388,99 @@ function populateBizSelect(){
   }
 }
 
+function checkLoginBlock(type){
+  const attemptsKey = type === 'biz' ? LOGIN_SECURITY.BIZ_ATTEMPTS_KEY : LOGIN_SECURITY.STAFF_ATTEMPTS_KEY;
+  const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
+  const blockMsg = type === 'biz' ? document.getElementById('bizBlockMsg') : document.getElementById('staffBlockMsg');
+  const loginBtn = type === 'biz' ? document.getElementById('bizLoginBtn') : document.getElementById('staffLoginBtn');
+  
+  const blockedTime = localStorage.getItem(blockedKey);
+  if(!blockedTime) return false;
+  
+  const now = Date.now();
+  const timeElapsed = now - parseInt(blockedTime);
+  
+  if(timeElapsed < LOGIN_SECURITY.BLOCK_DURATION){
+    blockMsg.classList.add('active');
+    loginBtn.disabled = true;
+    startCountdown(type);
+    return true;
+  } else {
+    localStorage.removeItem(attemptsKey);
+    localStorage.removeItem(blockedKey);
+    blockMsg.classList.remove('active');
+    loginBtn.disabled = false;
+    clearInterval(countdownIntervals[type]);
+    return false;
+  }
+}
+
+function recordFailedAttempt(type){
+  const attemptsKey = type === 'biz' ? LOGIN_SECURITY.BIZ_ATTEMPTS_KEY : LOGIN_SECURITY.STAFF_ATTEMPTS_KEY;
+  const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
+  const blockMsg = type === 'biz' ? document.getElementById('bizBlockMsg') : document.getElementById('staffBlockMsg');
+  const loginBtn = type === 'biz' ? document.getElementById('bizLoginBtn') : document.getElementById('staffLoginBtn');
+  
+  let attempts = parseInt(localStorage.getItem(attemptsKey) || '0');
+  attempts++;
+  localStorage.setItem(attemptsKey, attempts.toString());
+  
+  if(attempts >= LOGIN_SECURITY.MAX_ATTEMPTS){
+    localStorage.setItem(blockedKey, Date.now().toString());
+    blockMsg.classList.add('active');
+    loginBtn.disabled = true;
+    startCountdown(type);
+  }
+}
+
+function startCountdown(type){
+  const countdownEl = type === 'biz' ? document.getElementById('bizCountdown') : document.getElementById('staffCountdown');
+  const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
+  
+  if(countdownIntervals[type]) clearInterval(countdownIntervals[type]);
+  
+  function updateCountdown(){
+    const blockedTime = localStorage.getItem(blockedKey);
+    if(!blockedTime){
+      clearInterval(countdownIntervals[type]);
+      return;
+    }
+    
+    const now = Date.now();
+    const timeRemaining = LOGIN_SECURITY.BLOCK_DURATION - (now - parseInt(blockedTime));
+    
+    if(timeRemaining <= 0){
+      countdownEl.textContent = '0:00';
+      clearInterval(countdownIntervals[type]);
+      const attemptsKey = type === 'biz' ? LOGIN_SECURITY.BIZ_ATTEMPTS_KEY : LOGIN_SECURITY.STAFF_ATTEMPTS_KEY;
+      localStorage.removeItem(attemptsKey);
+      localStorage.removeItem(blockedKey);
+      const blockMsg = type === 'biz' ? document.getElementById('bizBlockMsg') : document.getElementById('staffBlockMsg');
+      const loginBtn = type === 'biz' ? document.getElementById('bizLoginBtn') : document.getElementById('staffLoginBtn');
+      blockMsg.classList.remove('active');
+      loginBtn.disabled = false;
+      return;
+    }
+    
+    const minutes = Math.floor(timeRemaining / 60000);
+    const seconds = Math.floor((timeRemaining % 60000) / 1000);
+    countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+  
+  updateCountdown();
+  countdownIntervals[type] = setInterval(updateCountdown, 1000);
+}
+
+function resetLoginAttempts(type){
+  const attemptsKey = type === 'biz' ? LOGIN_SECURITY.BIZ_ATTEMPTS_KEY : LOGIN_SECURITY.STAFF_ATTEMPTS_KEY;
+  const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
+  localStorage.removeItem(attemptsKey);
+  localStorage.removeItem(blockedKey);
+}
+
 function enterAsBusiness(){
+  if(checkLoginBlock('biz')) return;
+  
   const val = document.getElementById('gateBizSelect').value;
   const pw = document.getElementById('gateBizPassword').value;
   if(!val) return;
@@ -382,18 +488,24 @@ function enterAsBusiness(){
   document.getElementById('bizErr').style.display = 'none';
   if(!biz || biz.password !== pw){
     document.getElementById('bizErr').style.display = 'block';
+    recordFailedAttempt('biz');
     return;
   }
+  resetLoginAttempts('biz');
   identity = { role: 'negocio', negocio: val };
   showApp();
 }
 
 function enterAsStaff(){
+  if(checkLoginBlock('staff')) return;
+  
   const code = document.getElementById('gateStaffCode').value;
   if(code !== CONFIG.STAFF_CODE){
     document.getElementById('staffErr').style.display = 'block';
+    recordFailedAttempt('staff');
     return;
   }
+  resetLoginAttempts('staff');
   identity = { role: 'staff' };
   showApp();
 }
