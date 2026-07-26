@@ -171,6 +171,8 @@
   .login-block-msg{background:rgba(211,105,91,0.1); border:1px solid var(--red); color:var(--red); font-size:12px; padding:12px; border-radius:8px; margin-bottom:16px; display:none; text-align:center;}
   .login-block-msg.active{display:block;}
   .login-countdown{font-weight:700; font-size:13px;}
+  .last-activity-info{font-size:11px; color:var(--text-dim); margin-top:12px; text-align:center; padding-top:12px; border-top:1px solid var(--line);}
+  .last-activity-info .activity-time{font-weight:600; color:var(--text);}
 
   @media (max-width:640px){
     .card{grid-template-columns:1fr; }
@@ -204,6 +206,7 @@
       <div class="err" id="bizErr">Contraseña incorrecta.</div>
       <div class="login-block-msg" id="bizBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="bizCountdown">5:00</span></div>
       <button class="btn-primary" style="width:100%" onclick="enterAsBusiness()" id="bizLoginBtn">Entrar como este negocio</button>
+      <div class="last-activity-info" id="bizLastLogin"></div>
     </div>
 
     <div class="gate-divider">o</div>
@@ -215,6 +218,7 @@
       <div class="err" id="staffErr">Código incorrecto.</div>
       <div class="login-block-msg" id="staffBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="staffCountdown">5:00</span></div>
       <button class="btn-primary" style="width:100%" onclick="enterAsStaff()" id="staffLoginBtn">Entrar como Staff</button>
+      <div class="last-activity-info" id="staffLastLogin"></div>
     </div>
   </div>
 </div>
@@ -256,6 +260,7 @@
     </select>
     <span class="count-pill" id="countPill"></span>
   </div>
+  <div style="font-size:11px; color:var(--text-dim); margin-bottom:16px;">Última modificación del tablón: <span class="activity-time" id="lastBoardUpdateDisplay">—</span></div>
 
   <div id="eventsContainer">
     <div class="loading-msg">Cargando eventos...</div>
@@ -330,6 +335,8 @@ const CONFIG = {
 };
 
 const STORAGE_KEY = 'comercio-tablon-v3';
+const LAST_LOGIN_KEY = 'last-login-ts';
+const LAST_BOARD_UPDATE_KEY = 'last-board-update-ts';
 const LOGIN_SECURITY = {
   MAX_ATTEMPTS: 5,
   BLOCK_DURATION: 5 * 60 * 1000, // 5 minutos en ms
@@ -346,6 +353,35 @@ let countdownIntervals = {};
 
 const monthNames = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
+function formatDateTimeEs(timestamp){
+  if(!timestamp) return '—';
+  const d = new Date(parseInt(timestamp));
+  const day = String(d.getDate()).padStart(2,'0');
+  const month = String(d.getMonth()+1).padStart(2,'0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2,'0');
+  const mins = String(d.getMinutes()).padStart(2,'0');
+  return `${day}/${month}/${year} · ${hours}:${mins}`;
+}
+
+function recordLastLogin(){
+  localStorage.setItem(LAST_LOGIN_KEY, Date.now().toString());
+}
+
+function renderLastLogins(){
+  const ts = localStorage.getItem(LAST_LOGIN_KEY);
+  const formatted = formatDateTimeEs(ts);
+  document.getElementById('bizLastLogin').textContent = `Último acceso: ${formatted}`;
+  document.getElementById('staffLastLogin').textContent = `Último acceso: ${formatted}`;
+}
+
+function updateLastBoardModification(){
+  localStorage.setItem(LAST_BOARD_UPDATE_KEY, Date.now().toString());
+  const formatted = formatDateTimeEs(localStorage.getItem(LAST_BOARD_UPDATE_KEY));
+  const el = document.getElementById('lastBoardUpdateDisplay');
+  if(el) el.textContent = formatted;
+}
+
 async function loadDb(){
   try{
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -356,6 +392,8 @@ async function loadDb(){
   }
   // normaliza por si vinieran negocios como simples strings (formato antiguo)
   db.negocios = (db.negocios || []).map(n => typeof n === 'string' ? { name: n, password: '' } : n);
+  renderLastLogins();
+  populateBizSelect();
 }
 
 async function persist(){
@@ -494,6 +532,7 @@ function enterAsBusiness(){
     return;
   }
   resetLoginAttempts('biz');
+  recordLastLogin();
   identity = { role: 'negocio', negocio: val };
   showApp();
 }
@@ -508,6 +547,7 @@ function enterAsStaff(){
     return;
   }
   resetLoginAttempts('staff');
+  recordLastLogin();
   identity = { role: 'staff' };
   showApp();
 }
@@ -537,6 +577,9 @@ function showApp(){
   document.getElementById('staffPanel').style.display = isStaff ? 'block' : 'none';
   document.getElementById('addBtn').disabled = false;
 
+  renderLastLogins();
+  updateLastBoardModification();
+  
   if(isStaff) renderBizManager();
   renderEvents();
 }
@@ -572,6 +615,7 @@ async function editPassword(name){
   if(nueva === null) return;
   biz.password = nueva.trim();
   await persist();
+  updateLastBoardModification();
   renderBizManager();
 }
 
@@ -592,6 +636,7 @@ async function addBusiness(){
   await persist();
   nameInput.value = '';
   pwInput.value = '';
+  updateLastBoardModification();
   renderBizManager();
 }
 
@@ -599,6 +644,7 @@ async function removeBusiness(name){
   if(!confirm(`¿Quitar autorización a "${name}"? Sus eventos publicados no se borrarán.`)) return;
   db.negocios = db.negocios.filter(n => n.name !== name);
   await persist();
+  updateLastBoardModification();
   renderBizManager();
 }
 
@@ -680,6 +726,7 @@ async function saveEvent(){
 
   await persist();
   closeModal();
+  updateLastBoardModification();
   renderEvents();
 }
 
@@ -692,6 +739,7 @@ async function deleteEvent(id){
   if(!confirm('¿Seguro que quieres eliminar este evento del tablón?')) return;
   db.eventos = db.eventos.filter(e => e.id !== id);
   await persist();
+  updateLastBoardModification();
   renderEvents();
 }
 
@@ -702,6 +750,7 @@ async function cycleStatus(id){
   const next = order[(order.indexOf(db.eventos[idx].status) + 1) % order.length];
   db.eventos[idx].status = next;
   await persist();
+  updateLastBoardModification();
   renderEvents();
 }
 
