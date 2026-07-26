@@ -347,6 +347,43 @@
   </div>
 </div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore, doc, getDoc, setDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBnULhPfxzuHykW674nV7iodwTYG2qna_0",
+    authDomain: "panel-comercio-paragon.firebaseapp.com",
+    projectId: "panel-comercio-paragon",
+    storageBucket: "panel-comercio-paragon.firebasestorage.app",
+    messagingSenderId: "273152543135",
+    appId: "1:273152543135:web:9d224527756741686215aa"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const firestoreDb = getFirestore(app);
+  const tablonDocRef = doc(firestoreDb, "tablon", "principal");
+
+  window.firebaseLoadDb = async function () {
+    const snap = await getDoc(tablonDocRef);
+    if (snap.exists()) {
+      return snap.data();
+    } else {
+      const initial = { negocios: [], eventos: [] };
+      await setDoc(tablonDocRef, initial);
+      return initial;
+    }
+  };
+
+  window.firebaseSaveDb = async function (data) {
+    await setDoc(tablonDocRef, data);
+  };
+
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
 <script>
 const CONFIG = {
   STAFF_CODE: 'carlosruiz'
@@ -406,13 +443,12 @@ function updateLastBoardModification(){
 
 async function loadDb(){
   try{
-    const stored = localStorage.getItem(STORAGE_KEY);
-    db = stored ? JSON.parse(stored) : { negocios: [], eventos: [] };
+    db = await window.firebaseLoadDb();
   } catch(e){
-    console.error('Error cargando BD:', e);
+    console.error('Error cargando BD desde Firebase:', e);
+    alert('No se pudo conectar con la base de datos. Comprueba tu conexión a internet.');
     db = { negocios: [], eventos: [] };
   }
-  // normaliza por si vinieran negocios como simples strings (formato antiguo)
   db.negocios = (db.negocios || []).map(n => typeof n === 'string' ? { name: n, password: '' } : n);
   renderLastLogins();
   populateBizSelect();
@@ -420,10 +456,10 @@ async function loadDb(){
 
 async function persist(){
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    await window.firebaseSaveDb(db);
   } catch(e){
-    console.error('Error guardando', e);
-    alert('No se pudo guardar. Inténtalo de nuevo.');
+    console.error('Error guardando en Firebase:', e);
+    alert('No se pudo guardar. Comprueba tu conexión a internet e inténtalo de nuevo.');
   }
 }
 
@@ -951,10 +987,10 @@ function escapeAttr(str){
   return (str||'').replace(/"/g,'&quot;');
 }
 
-(async function init(){
+window.addEventListener('firebase-ready', async function init(){
   await loadDb();
   populateBizSelect();
-})();
+}, { once: true });
 </script>
 </body>
 </html>
