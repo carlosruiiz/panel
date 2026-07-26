@@ -111,6 +111,15 @@
   }
   .staff-add-row input{flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:8px 12px; border-radius:7px; font-size:13px;}
   .staff-add-row button{background:var(--gold); color:#241b0d; border:none; padding:8px 16px; border-radius:7px; font-weight:700; font-size:12.5px; cursor:pointer;}
+  
+  .staff-backup-section{background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; margin-top:16px;}
+  .staff-backup-section h4{margin:0 0 10px 0; font-size:12px; color:var(--gold); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;}
+  .staff-backup-section .backup-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .backup-btn{background:var(--panel); border:1px solid var(--line); color:var(--text); padding:7px 12px; border-radius:6px; font-size:12px; cursor:pointer; transition:all .12s ease;}
+  .backup-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .backup-btn.export{border-color:var(--green); color:var(--green);}
+  .backup-btn.export:hover{background:rgba(79,157,110,0.1);}
+  #backupImportInput{display:none;}
 
   .toolbar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;}
   .toolbar input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:9px 14px;border-radius:8px;font-size:13px;min-width:220px;}
@@ -247,6 +256,15 @@
       <input type="text" id="newBizName" placeholder="Nombre del negocio">
       <input type="text" id="newBizPassword" placeholder="Contraseña para ese negocio">
       <button onclick="addBusiness()">Añadir negocio</button>
+    </div>
+    
+    <div class="staff-backup-section">
+      <h4>🔒 Copia de seguridad</h4>
+      <div class="backup-actions">
+        <button class="backup-btn export" onclick="exportBackup()">⬇️ Exportar datos (.json)</button>
+        <button class="backup-btn" onclick="document.getElementById('backupImportInput').click()">⬆️ Importar copia</button>
+        <input type="file" id="backupImportInput" accept=".json" onchange="handleBackupImport(event)">
+      </div>
     </div>
   </div>
 
@@ -650,6 +668,95 @@ async function removeBusiness(name){
   await persist();
   updateLastBoardModification();
   renderBizManager();
+}
+
+function exportBackup(){
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  const filename = `panel-comercio-backup-${dateStr}.json`;
+  
+  const backup = {
+    negocios: db.negocios,
+    eventos: db.eventos,
+    exportedAt: new Date().toISOString(),
+    version: '1'
+  };
+  
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  console.log(`[BACKUP] Exportado: ${filename}`);
+}
+
+function handleBackupImport(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const content = e.target.result;
+      const backup = JSON.parse(content);
+      
+      // Validar estructura
+      if(!backup.negocios || !Array.isArray(backup.negocios) || !backup.eventos || !Array.isArray(backup.eventos)){
+        alert('❌ Formato de archivo inválido. El archivo debe contener "negocios" y "eventos" como arrays.');
+        return;
+      }
+      
+      // Validar que negocios tenga estructura correcta
+      if(!backup.negocios.every(n => n.name && typeof n.password === 'string')){
+        alert('❌ Estructura de negocios inválida. Cada negocio debe tener "name" y "password".');
+        return;
+      }
+      
+      // Validar que eventos tenga estructura correcta
+      if(!backup.eventos.every(ev => ev.id && ev.titulo && ev.fecha)){
+        alert('❌ Estructura de eventos inválida. Cada evento debe tener al menos "id", "titulo" y "fecha".');
+        return;
+      }
+      
+      // Confirmación
+      if(!confirm('⚠️ Esto reemplazará todos los datos actuales (negocios y eventos) por los del archivo importado.\n\n¿Continuar?')){
+        return;
+      }
+      
+      // Restaurar datos
+      db.negocios = backup.negocios;
+      db.eventos = backup.eventos;
+      persist();
+      
+      alert(`✅ Copia de seguridad restaurada correctamente.\n${backup.negocios.length} negocio(s) y ${backup.eventos.length} evento(s) importados.`);
+      console.log(`[BACKUP] Importado desde: ${file.name}`);
+      
+      // Refrescar UI
+      renderBizManager();
+      renderEvents();
+      updateLastBoardModification();
+      
+    } catch(err){
+      console.error('Error importando backup:', err);
+      alert(`❌ Error al importar el archivo: ${err.message}\n\nAsegúrate de que sea un archivo .json válido exportado desde esta aplicación.`);
+    }
+  };
+  
+  reader.onerror = function(){
+    alert('❌ Error al leer el archivo.');
+  };
+  
+  reader.readAsText(file);
+  
+  // Resetear input para permitir importar el mismo archivo otra vez
+  event.target.value = '';
 }
 
 function openModal(id){
