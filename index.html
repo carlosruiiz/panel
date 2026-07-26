@@ -335,7 +335,8 @@ const CONFIG = {
 };
 
 const STORAGE_KEY = 'comercio-tablon-v3';
-const LAST_LOGIN_KEY = 'last-login-ts';
+const LAST_LOGIN_BIZ_KEY = 'last-login-biz-ts';
+const LAST_LOGIN_STAFF_KEY = 'last-login-staff-ts';
 const LAST_BOARD_UPDATE_KEY = 'last-board-update-ts';
 const LOGIN_SECURITY = {
   MAX_ATTEMPTS: 5,
@@ -364,15 +365,18 @@ function formatDateTimeEs(timestamp){
   return `${day}/${month}/${year} · ${hours}:${mins}`;
 }
 
-function recordLastLogin(){
-  localStorage.setItem(LAST_LOGIN_KEY, Date.now().toString());
+function recordLastLogin(type){
+  const key = type === 'biz' ? LAST_LOGIN_BIZ_KEY : LAST_LOGIN_STAFF_KEY;
+  localStorage.setItem(key, Date.now().toString());
 }
 
 function renderLastLogins(){
-  const ts = localStorage.getItem(LAST_LOGIN_KEY);
-  const formatted = formatDateTimeEs(ts);
-  document.getElementById('bizLastLogin').textContent = `Último acceso: ${formatted}`;
-  document.getElementById('staffLastLogin').textContent = `Último acceso: ${formatted}`;
+  const tsBiz = localStorage.getItem(LAST_LOGIN_BIZ_KEY);
+  const tsStaff = localStorage.getItem(LAST_LOGIN_STAFF_KEY);
+  const formattedBiz = formatDateTimeEs(tsBiz);
+  const formattedStaff = formatDateTimeEs(tsStaff);
+  document.getElementById('bizLastLogin').textContent = `Último acceso: ${formattedBiz}`;
+  document.getElementById('staffLastLogin').textContent = `Último acceso: ${formattedStaff}`;
 }
 
 function updateLastBoardModification(){
@@ -532,7 +536,7 @@ function enterAsBusiness(){
     return;
   }
   resetLoginAttempts('biz');
-  recordLastLogin();
+  recordLastLogin('biz');
   identity = { role: 'negocio', negocio: val };
   showApp();
 }
@@ -547,7 +551,7 @@ function enterAsStaff(){
     return;
   }
   resetLoginAttempts('staff');
-  recordLastLogin();
+  recordLastLogin('staff');
   identity = { role: 'staff' };
   showApp();
 }
