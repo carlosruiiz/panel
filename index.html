@@ -99,19 +99,17 @@
 
   .staff-panel{background:var(--panel); border:1px solid var(--red); border-left:4px solid var(--red); border-radius:var(--radius); padding:16px 20px; margin-bottom:22px;}
   .staff-panel h3{margin:0 0 10px 0; font-size:14px; color:var(--red);}
+  .staff-panel .panel-note{font-size:12px; color:var(--text-dim); margin-bottom:14px; line-height:1.5;}
+  .staff-panel .panel-note a{color:var(--gold);}
   .staff-panel .biz-list{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;}
   .biz-chip{background:var(--panel-2); border:1px solid var(--line); border-radius:20px; padding:5px 8px 5px 14px; font-size:12px; display:flex; align-items:center; gap:8px;}
   .biz-chip button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px;padding:0 4px;}
   .biz-chip button:hover{color:var(--red);}
+  .biz-chip .biz-email{font-family:monospace; color:var(--text-dim); font-size:11px;}
   .staff-add-row{display:flex; gap:8px; flex-wrap:wrap;}
-  .biz-chip .pw-value{font-family:monospace; color:var(--gold); margin-left:2px;}
-  .biz-chip input.pw-edit{
-    background:var(--panel); border:1px solid var(--line); color:var(--text);
-    border-radius:5px; padding:3px 6px; font-size:11px; width:90px;
-  }
-  .staff-add-row input{flex:1; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:8px 12px; border-radius:7px; font-size:13px;}
+  .staff-add-row input{flex:1; min-width:150px; background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:8px 12px; border-radius:7px; font-size:13px;}
   .staff-add-row button{background:var(--gold); color:#241b0d; border:none; padding:8px 16px; border-radius:7px; font-weight:700; font-size:12.5px; cursor:pointer;}
-  
+
   .staff-backup-section{background:var(--panel-2); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; margin-top:16px;}
   .staff-backup-section h4{margin:0 0 10px 0; font-size:12px; color:var(--gold); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;}
   .staff-backup-section .backup-actions{display:flex; gap:8px; flex-wrap:wrap;}
@@ -212,7 +210,7 @@
       <select id="gateBizSelect"></select>
       <label>Contraseña del negocio</label>
       <input type="password" id="gateBizPassword" placeholder="Contraseña que os dio Comercio">
-      <div class="err" id="bizErr">Contraseña incorrecta.</div>
+      <div class="err" id="bizErr">Negocio o contraseña incorrectos.</div>
       <div class="login-block-msg" id="bizBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="bizCountdown">5:00</span></div>
       <button class="btn-primary" style="width:100%" onclick="enterAsBusiness()" id="bizLoginBtn">Entrar como este negocio</button>
       <div class="last-activity-info" id="bizLastLogin"></div>
@@ -222,9 +220,9 @@
     <button class="gate-staff-toggle" onclick="toggleStaffLogin()">Acceso Staff de Comercio</button>
 
     <div id="staffLoginSection" style="display:none; margin-top:16px;">
-      <label>Código de staff</label>
-      <input type="password" id="gateStaffCode" placeholder="Introduce el código">
-      <div class="err" id="staffErr">Código incorrecto.</div>
+      <label>Contraseña de staff</label>
+      <input type="password" id="gateStaffCode" placeholder="Introduce la contraseña">
+      <div class="err" id="staffErr">Contraseña incorrecta.</div>
       <div class="login-block-msg" id="staffBlockMsg">Demasiados intentos. Inténtelo de nuevo en <span class="login-countdown" id="staffCountdown">5:00</span></div>
       <button class="btn-primary" style="width:100%" onclick="enterAsStaff()" id="staffLoginBtn">Entrar como Staff</button>
       <div class="last-activity-info" id="staffLastLogin"></div>
@@ -251,17 +249,24 @@
 
   <div class="staff-panel" id="staffPanel" style="display:none;">
     <h3>🔧 Gestión de negocios autorizados (solo Staff)</h3>
+    <div class="panel-note">
+      Las cuentas (email + contraseña) de cada negocio se crean en
+      <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Authentication</a>.
+      Una vez creada la cuenta ahí, pega su UID, nombre y email aquí abajo para que aparezca en el desplegable de acceso.
+      Para cambiar una contraseña o quitarle el acceso del todo a un negocio, hazlo también desde Firebase Authentication.
+    </div>
     <div class="biz-list" id="bizList"></div>
     <div class="staff-add-row">
-      <input type="text" id="newBizName" placeholder="Nombre del negocio">
-      <input type="text" id="newBizPassword" placeholder="Contraseña para ese negocio">
-      <button onclick="addBusiness()">Añadir negocio</button>
+      <input type="text" id="newBizUid" placeholder="UID (de Firebase Authentication)">
+      <input type="text" id="newBizName" placeholder="Nombre visible del negocio">
+      <input type="text" id="newBizEmail" placeholder="Email interno usado en Authentication">
+      <button onclick="addBusiness()">Añadir a la lista</button>
     </div>
-    
+
     <div class="staff-backup-section">
-      <h4>🔒 Copia de seguridad</h4>
+      <h4>🔒 Copia de seguridad de eventos</h4>
       <div class="backup-actions">
-        <button class="backup-btn export" onclick="exportBackup()">⬇️ Exportar datos (.json)</button>
+        <button class="backup-btn export" onclick="exportBackup()">⬇️ Exportar eventos (.json)</button>
         <button class="backup-btn" onclick="document.getElementById('backupImportInput').click()">⬆️ Importar copia</button>
         <input type="file" id="backupImportInput" accept=".json" onchange="handleBackupImport(event)">
       </div>
@@ -350,8 +355,12 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import {
-    getFirestore, doc, getDoc, setDoc
+    getFirestore, doc, getDoc, setDoc, collection, getDocs,
+    addDoc, updateDoc, deleteDoc
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword, signOut
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBnULhPfxzuHykW674nV7iodwTYG2qna_0",
@@ -364,32 +373,47 @@
 
   const app = initializeApp(firebaseConfig);
   const firestoreDb = getFirestore(app);
-  const tablonDocRef = doc(firestoreDb, "tablon", "principal");
+  const auth = getAuth(app);
 
-  window.firebaseLoadDb = async function () {
-    const snap = await getDoc(tablonDocRef);
-    if (snap.exists()) {
-      return snap.data();
-    } else {
-      const initial = { negocios: [], eventos: [] };
-      await setDoc(tablonDocRef, initial);
-      return initial;
+  window.fb = {
+    auth,
+    signIn: (email, pass) => signInWithEmailAndPassword(auth, email, pass),
+    signOutUser: () => signOut(auth),
+
+    getNegocios: async () => {
+      const snap = await getDocs(collection(firestoreDb, "negocios"));
+      return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    },
+    isStaff: async (uid) => {
+      const snap = await getDoc(doc(firestoreDb, "staff", uid));
+      return snap.exists();
+    },
+    getEventos: async () => {
+      const snap = await getDocs(collection(firestoreDb, "eventos"));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+    addEvento: async (data) => {
+      const ref = await addDoc(collection(firestoreDb, "eventos"), data);
+      return ref.id;
+    },
+    updateEvento: async (id, data) => {
+      await updateDoc(doc(firestoreDb, "eventos", id), data);
+    },
+    deleteEvento: async (id) => {
+      await deleteDoc(doc(firestoreDb, "eventos", id));
+    },
+    addNegocio: async (uid, name, email) => {
+      await setDoc(doc(firestoreDb, "negocios", uid), { name, email });
+    },
+    deleteNegocio: async (uid) => {
+      await deleteDoc(doc(firestoreDb, "negocios", uid));
     }
-  };
-
-  window.firebaseSaveDb = async function (data) {
-    await setDoc(tablonDocRef, data);
   };
 
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 
 <script>
-const CONFIG = {
-  STAFF_CODE: 'carlosruiz'
-};
-
-const STORAGE_KEY = 'comercio-tablon-v3';
 const LAST_LOGIN_BIZ_KEY = 'last-login-biz-ts';
 const LAST_LOGIN_STAFF_KEY = 'last-login-staff-ts';
 const LAST_BOARD_UPDATE_KEY = 'last-board-update-ts';
@@ -404,7 +428,6 @@ const LOGIN_SECURITY = {
 let db = { negocios: [], eventos: [] };
 let identity = null;
 let editingId = null;
-let revealedPasswords = {};
 let countdownIntervals = {};
 
 const monthNames = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -443,23 +466,21 @@ function updateLastBoardModification(){
 
 async function loadDb(){
   try{
-    db = await window.firebaseLoadDb();
+    db.negocios = await window.fb.getNegocios();
   } catch(e){
-    console.error('Error cargando BD desde Firebase:', e);
-    alert('No se pudo conectar con la base de datos. Comprueba tu conexión a internet.');
-    db = { negocios: [], eventos: [] };
+    console.error('Error cargando negocios:', e);
+    db.negocios = [];
   }
-  db.negocios = (db.negocios || []).map(n => typeof n === 'string' ? { name: n, password: '' } : n);
   renderLastLogins();
   populateBizSelect();
 }
 
-async function persist(){
+async function loadEventos(){
   try{
-    await window.firebaseSaveDb(db);
+    db.eventos = await window.fb.getEventos();
   } catch(e){
-    console.error('Error guardando en Firebase:', e);
-    alert('No se pudo guardar. Comprueba tu conexión a internet e inténtalo de nuevo.');
+    console.error('Error cargando eventos:', e);
+    db.eventos = [];
   }
 }
 
@@ -489,13 +510,13 @@ function checkLoginBlock(type){
   const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
   const blockMsg = type === 'biz' ? document.getElementById('bizBlockMsg') : document.getElementById('staffBlockMsg');
   const loginBtn = type === 'biz' ? document.getElementById('bizLoginBtn') : document.getElementById('staffLoginBtn');
-  
+
   const blockedTime = localStorage.getItem(blockedKey);
   if(!blockedTime) return false;
-  
+
   const now = Date.now();
   const timeElapsed = now - parseInt(blockedTime);
-  
+
   if(timeElapsed < LOGIN_SECURITY.BLOCK_DURATION){
     blockMsg.classList.add('active');
     loginBtn.disabled = true;
@@ -516,12 +537,12 @@ function recordFailedAttempt(type){
   const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
   const blockMsg = type === 'biz' ? document.getElementById('bizBlockMsg') : document.getElementById('staffBlockMsg');
   const loginBtn = type === 'biz' ? document.getElementById('bizLoginBtn') : document.getElementById('staffLoginBtn');
-  
+
   let attempts = parseInt(localStorage.getItem(attemptsKey) || '0');
   attempts++;
   localStorage.setItem(attemptsKey, attempts.toString());
   console.log(`[SEGURIDAD] ${type} intentos fallidos: ${attempts}/${LOGIN_SECURITY.MAX_ATTEMPTS}`);
-  
+
   if(attempts >= LOGIN_SECURITY.MAX_ATTEMPTS){
     localStorage.setItem(blockedKey, Date.now().toString());
     blockMsg.classList.add('active');
@@ -534,19 +555,19 @@ function recordFailedAttempt(type){
 function startCountdown(type){
   const countdownEl = type === 'biz' ? document.getElementById('bizCountdown') : document.getElementById('staffCountdown');
   const blockedKey = type === 'biz' ? LOGIN_SECURITY.BIZ_BLOCKED_KEY : LOGIN_SECURITY.STAFF_BLOCKED_KEY;
-  
+
   if(countdownIntervals[type]) clearInterval(countdownIntervals[type]);
-  
+
   function updateCountdown(){
     const blockedTime = localStorage.getItem(blockedKey);
     if(!blockedTime){
       clearInterval(countdownIntervals[type]);
       return;
     }
-    
+
     const now = Date.now();
     const timeRemaining = LOGIN_SECURITY.BLOCK_DURATION - (now - parseInt(blockedTime));
-    
+
     if(timeRemaining <= 0){
       countdownEl.textContent = '0:00';
       clearInterval(countdownIntervals[type]);
@@ -559,12 +580,12 @@ function startCountdown(type){
       loginBtn.disabled = false;
       return;
     }
-    
+
     const minutes = Math.floor(timeRemaining / 60000);
     const seconds = Math.floor((timeRemaining % 60000) / 1000);
     countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
-  
+
   updateCountdown();
   countdownIntervals[type] = setInterval(updateCountdown, 1000);
 }
@@ -576,41 +597,60 @@ function resetLoginAttempts(type){
   localStorage.removeItem(blockedKey);
 }
 
-function enterAsBusiness(){
+async function enterAsBusiness(){
   if(checkLoginBlock('biz')) return;
-  
+
   const val = document.getElementById('gateBizSelect').value;
   const pw = document.getElementById('gateBizPassword').value;
   if(!val) return;
+
   const biz = db.negocios.find(n => n.name === val);
   document.getElementById('bizErr').style.display = 'none';
-  if(!biz || biz.password !== pw){
+
+  if(!biz || !biz.email){
     document.getElementById('bizErr').style.display = 'block';
     recordFailedAttempt('biz');
     return;
   }
+
+  try{
+    await window.fb.signIn(biz.email, pw);
+  } catch(e){
+    document.getElementById('bizErr').style.display = 'block';
+    recordFailedAttempt('biz');
+    return;
+  }
+
   resetLoginAttempts('biz');
   recordLastLogin('biz');
-  identity = { role: 'negocio', negocio: val };
+  identity = { role: 'negocio', negocio: val, uid: biz.uid };
+  await loadEventos();
   showApp();
 }
 
-function enterAsStaff(){
+async function enterAsStaff(){
   if(checkLoginBlock('staff')) return;
-  
-  const code = document.getElementById('gateStaffCode').value;
-  if(code !== CONFIG.STAFF_CODE){
+
+  const pw = document.getElementById('gateStaffCode').value;
+  document.getElementById('staffErr').style.display = 'none';
+
+  try{
+    await window.fb.signIn('staff@paragon-interno.local', pw);
+  } catch(e){
     document.getElementById('staffErr').style.display = 'block';
     recordFailedAttempt('staff');
     return;
   }
+
   resetLoginAttempts('staff');
   recordLastLogin('staff');
   identity = { role: 'staff' };
+  await loadEventos();
   showApp();
 }
 
 function logout(){
+  window.fb.signOutUser();
   identity = null;
   document.getElementById('appWrap').style.display = 'none';
   document.getElementById('gateWrap').style.display = 'block';
@@ -618,7 +658,6 @@ function logout(){
   document.getElementById('staffErr').style.display = 'none';
   document.getElementById('gateBizPassword').value = '';
   document.getElementById('bizErr').style.display = 'none';
-  revealedPasswords = {};
   populateBizSelect();
 }
 
@@ -637,7 +676,7 @@ function showApp(){
 
   renderLastLogins();
   updateLastBoardModification();
-  
+
   if(isStaff) renderBizManager();
   renderEvents();
 }
@@ -648,80 +687,79 @@ function renderBizManager(){
     list.innerHTML = `<span style="color:var(--text-dim); font-size:12px;">Ningún negocio autorizado todavía.</span>`;
     return;
   }
-  list.innerHTML = db.negocios.map(n => {
-    const revealed = !!revealedPasswords[n.name];
-    return `
+  list.innerHTML = db.negocios.map(n => `
     <div class="biz-chip">
       <b>${escapeHtml(n.name)}</b>
-      <span class="pw-value">${revealed ? escapeHtml(n.password || '(sin contraseña)') : '••••••'}</span>
-      <button onclick="togglePasswordView('${escapeAttr(n.name)}')" title="${revealed ? 'Ocultar' : 'Ver'} contraseña">${revealed ? '🙈' : '👁'}</button>
-      <button onclick="editPassword('${escapeAttr(n.name)}')" title="Cambiar contraseña">✏️</button>
-      <button onclick="removeBusiness('${escapeAttr(n.name)}')" title="Quitar autorización">✕</button>
+      <span class="biz-email">${escapeHtml(n.email || '')}</span>
+      <button onclick="removeBusiness('${escapeAttr(n.uid)}', '${escapeAttr(n.name)}')" title="Quitar de la lista">✕</button>
     </div>
-  `;
-  }).join('');
-}
-
-function togglePasswordView(name){
-  revealedPasswords[name] = !revealedPasswords[name];
-  renderBizManager();
-}
-
-async function editPassword(name){
-  const biz = db.negocios.find(n => n.name === name);
-  const nueva = prompt(`Nueva contraseña para "${name}":`, biz.password || '');
-  if(nueva === null) return;
-  biz.password = nueva.trim();
-  await persist();
-  updateLastBoardModification();
-  renderBizManager();
+  `).join('');
 }
 
 async function addBusiness(){
+  const uidInput = document.getElementById('newBizUid');
   const nameInput = document.getElementById('newBizName');
-  const pwInput = document.getElementById('newBizPassword');
+  const emailInput = document.getElementById('newBizEmail');
+  const uid = uidInput.value.trim();
   const name = nameInput.value.trim();
-  const password = pwInput.value.trim();
-  if(!name || !password){
-    alert('Ponle un nombre y una contraseña al negocio.');
+  const email = emailInput.value.trim();
+
+  if(!uid || !name || !email){
+    alert('Rellena el UID, el nombre y el email (crea antes la cuenta en Firebase Authentication).');
     return;
   }
-  if(db.negocios.some(n => n.name === name)){
-    alert('Ese negocio ya está autorizado.');
+  if(db.negocios.some(n => n.uid === uid)){
+    alert('Ya hay un negocio en la lista con ese UID.');
     return;
   }
-  db.negocios.push({ name, password });
-  await persist();
+
+  try{
+    await window.fb.addNegocio(uid, name, email);
+  } catch(e){
+    alert('No se pudo añadir el negocio. Comprueba tu conexión e inténtalo de nuevo.');
+    console.error(e);
+    return;
+  }
+
+  uidInput.value = '';
   nameInput.value = '';
-  pwInput.value = '';
+  emailInput.value = '';
   updateLastBoardModification();
+  await loadDb();
   renderBizManager();
 }
 
-async function removeBusiness(name){
-  if(!confirm(`¿Quitar autorización a "${name}"? Sus eventos publicados no se borrarán.`)) return;
-  db.negocios = db.negocios.filter(n => n.name !== name);
-  await persist();
+async function removeBusiness(uid, name){
+  if(!confirm(`¿Quitar "${name}" de la lista de negocios autorizados?\n\nEsto NO borra su cuenta de Firebase Authentication (para eso ve a la consola de Firebase). Sus eventos publicados no se borrarán.`)) return;
+
+  try{
+    await window.fb.deleteNegocio(uid);
+  } catch(e){
+    alert('No se pudo quitar el negocio.');
+    console.error(e);
+    return;
+  }
+
   updateLastBoardModification();
+  await loadDb();
   renderBizManager();
 }
 
 function exportBackup(){
   const today = new Date();
   const dateStr = today.toISOString().split('T')[0];
-  const filename = `panel-comercio-backup-${dateStr}.json`;
-  
+  const filename = `panel-comercio-eventos-backup-${dateStr}.json`;
+
   const backup = {
-    negocios: db.negocios,
     eventos: db.eventos,
     exportedAt: new Date().toISOString(),
-    version: '1'
+    version: '2'
   };
-  
+
   const json = JSON.stringify(backup, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  
+
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
@@ -729,69 +767,57 @@ function exportBackup(){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  
+
   console.log(`[BACKUP] Exportado: ${filename}`);
 }
 
-function handleBackupImport(event){
+async function handleBackupImport(event){
   const file = event.target.files[0];
   if(!file) return;
-  
+
   const reader = new FileReader();
-  reader.onload = function(e){
+  reader.onload = async function(e){
     try{
       const content = e.target.result;
       const backup = JSON.parse(content);
-      
-      // Validar estructura
-      if(!backup.negocios || !Array.isArray(backup.negocios) || !backup.eventos || !Array.isArray(backup.eventos)){
-        alert('❌ Formato de archivo inválido. El archivo debe contener "negocios" y "eventos" como arrays.');
+
+      if(!backup.eventos || !Array.isArray(backup.eventos)){
+        alert('❌ Formato de archivo inválido. El archivo debe contener "eventos" como array.');
         return;
       }
-      
-      // Validar que negocios tenga estructura correcta
-      if(!backup.negocios.every(n => n.name && typeof n.password === 'string')){
-        alert('❌ Estructura de negocios inválida. Cada negocio debe tener "name" y "password".');
+
+      if(!backup.eventos.every(ev => ev.titulo && ev.fecha)){
+        alert('❌ Estructura de eventos inválida. Cada evento debe tener al menos "titulo" y "fecha".');
         return;
       }
-      
-      // Validar que eventos tenga estructura correcta
-      if(!backup.eventos.every(ev => ev.id && ev.titulo && ev.fecha)){
-        alert('❌ Estructura de eventos inválida. Cada evento debe tener al menos "id", "titulo" y "fecha".');
+
+      if(!confirm(`⚠️ Esto añadirá ${backup.eventos.length} evento(s) del archivo importado al tablón actual.\n\n¿Continuar?`)){
         return;
       }
-      
-      // Confirmación
-      if(!confirm('⚠️ Esto reemplazará todos los datos actuales (negocios y eventos) por los del archivo importado.\n\n¿Continuar?')){
-        return;
+
+      for(const ev of backup.eventos){
+        const { id, ...data } = ev;
+        await window.fb.addEvento(data);
       }
-      
-      // Restaurar datos
-      db.negocios = backup.negocios;
-      db.eventos = backup.eventos;
-      persist();
-      
-      alert(`✅ Copia de seguridad restaurada correctamente.\n${backup.negocios.length} negocio(s) y ${backup.eventos.length} evento(s) importados.`);
+
+      alert(`✅ Copia de seguridad restaurada correctamente.\n${backup.eventos.length} evento(s) importados.`);
       console.log(`[BACKUP] Importado desde: ${file.name}`);
-      
-      // Refrescar UI
-      renderBizManager();
+
+      await loadEventos();
       renderEvents();
       updateLastBoardModification();
-      
+
     } catch(err){
       console.error('Error importando backup:', err);
       alert(`❌ Error al importar el archivo: ${err.message}\n\nAsegúrate de que sea un archivo .json válido exportado desde esta aplicación.`);
     }
   };
-  
+
   reader.onerror = function(){
     alert('❌ Error al leer el archivo.');
   };
-  
+
   reader.readAsText(file);
-  
-  // Resetear input para permitir importar el mismo archivo otra vez
   event.target.value = '';
 }
 
@@ -849,55 +875,62 @@ async function saveEvent(){
     hora: document.getElementById('f_hora').value,
     lugar: document.getElementById('f_lugar').value.trim(),
     organizadora,
+    organizadoraUid: identity.role === 'negocio' ? identity.uid : (db.negocios.find(n => n.name === organizadora)?.uid || null),
     colaboradoras: document.getElementById('f_colaboradoras').value.trim(),
     descripcion: document.getElementById('f_descripcion').value.trim(),
     mensaje: document.getElementById('f_mensaje').value.trim(),
     cartel: document.getElementById('f_cartel').value.trim(),
   };
 
-  if(editingId){
-    const idx = db.eventos.findIndex(e => e.id === editingId);
-    if(identity.role === 'negocio' && db.eventos[idx].organizadora !== identity.negocio){
-      alert('Solo puedes editar eventos de tu propio negocio.');
-      return;
+  try{
+    if(editingId){
+      await window.fb.updateEvento(editingId, data);
+    } else {
+      await window.fb.addEvento({
+        ...data,
+        status: 'pendiente',
+        creadoEn: new Date().toISOString()
+      });
     }
-    db.eventos[idx] = {...db.eventos[idx], ...data};
-  } else {
-    db.eventos.push({
-      id: 'ev_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-      status: 'pendiente',
-      creadoEn: new Date().toISOString(),
-      ...data
-    });
+  } catch(e){
+    alert('No se pudo guardar el evento. Puede que no tengas permiso para editar este evento.');
+    console.error(e);
+    return;
   }
 
-  await persist();
   closeModal();
   updateLastBoardModification();
+  await loadEventos();
   renderEvents();
 }
 
 async function deleteEvent(id){
-  const ev = db.eventos.find(e => e.id === id);
-  if(identity.role === 'negocio' && ev.organizadora !== identity.negocio){
-    alert('Solo puedes eliminar eventos de tu propio negocio.');
+  if(!confirm('¿Seguro que quieres eliminar este evento del tablón?')) return;
+  try{
+    await window.fb.deleteEvento(id);
+  } catch(e){
+    alert('No tienes permiso para eliminar este evento.');
+    console.error(e);
     return;
   }
-  if(!confirm('¿Seguro que quieres eliminar este evento del tablón?')) return;
-  db.eventos = db.eventos.filter(e => e.id !== id);
-  await persist();
   updateLastBoardModification();
+  await loadEventos();
   renderEvents();
 }
 
 async function cycleStatus(id){
   if(identity.role !== 'staff') return;
-  const idx = db.eventos.findIndex(e => e.id === id);
+  const ev = db.eventos.find(e => e.id === id);
   const order = ['pendiente','aprobado','rechazado'];
-  const next = order[(order.indexOf(db.eventos[idx].status) + 1) % order.length];
-  db.eventos[idx].status = next;
-  await persist();
+  const next = order[(order.indexOf(ev.status) + 1) % order.length];
+  try{
+    await window.fb.updateEvento(id, { status: next });
+  } catch(e){
+    console.error(e);
+    return;
+  }
   updateLastBoardModification();
+  await loadEventos();
   renderEvents();
 }
 
@@ -989,7 +1022,6 @@ function escapeAttr(str){
 
 window.addEventListener('firebase-ready', async function init(){
   await loadDb();
-  populateBizSelect();
 }, { once: true });
 </script>
 </body>
